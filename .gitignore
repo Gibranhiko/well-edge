@@ -1,0 +1,44 @@
+# Build output
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code
+.vscode/
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# .NET
+*.swp
+*.*~
+project.lock.json
+.DS_Store
+*.pyc
+
+# Rider
+.idea/
+
+# Angular (added when welldash is created in Phase 7)
+node_modules/
+dist/
+.angular/
+
+# Logs (added in Phase 8)
+logs/
+
+# Environment / secrets
+*.env
+appsettings.*.json
+!appsettings.json
