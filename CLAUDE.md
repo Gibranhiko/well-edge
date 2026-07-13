@@ -9,7 +9,7 @@ The project built here is **WellEdge**: a mini real-time edge monitoring system 
 ## Repo Structure
 
 ```
-halliburton-training/
+welledge-training/
   CLAUDE.md                   ← you are here
   documents/                  ← all markdown files live here
     LEARNING_PLAN.md          ← 8-phase learning plan with knowledge checks
