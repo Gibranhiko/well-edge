@@ -107,16 +107,11 @@ The goal is to get comfortable with: records, async/await, CancellationToken, ba
 
 ### Check — Phase 1
 
-Before moving to Phase 2, you should be able to answer these without looking:
+Before moving to Phase 2, you should be able to answer these:
 
-1. What is the difference between `Task` and `Task<T>`? When do you use each?
-2. What does `await` actually do to the thread while it waits?
-3. Why does `async void` exist and why is it almost always wrong to use it?
-4. What is the difference between `IEnumerable<T>` and `IAsyncEnumerable<T>`? When would you choose one over the other?
-5. What does `IDisposable` protect you from, and what happens if you forget to call `Dispose()`?
-6. What is the difference between a `class` and a `record` in C#? Why would you prefer a record for `SensorReading`?
-7. If you have a method `public async Task DoSomething()` that you call without `await`, what happens? Is it a compile error? A runtime error? Something else?
-8. What is a `CancellationToken` and why is it the correct way to signal shutdown instead of a boolean flag?
+1. *(Code)* `await` suspends a method but doesn't block the thread. Why does that matter for a system reading sensors at 4 Hz — what would go wrong if it blocked instead?
+2. *(Purpose)* The simulator, the data record, and the entry point are in three separate files. Why not just write all of it in `Program.cs`?
+3. *(Purpose)* The simulator uses `IAsyncEnumerable` instead of building a list of readings and returning them all at once. What would break — or become impossible — if it returned a `List<SensorReading>` instead?
 
 ---
 
@@ -185,13 +180,9 @@ The reading should still just print to console — persistence and streaming com
 
 ### Check — Phase 2
 
-1. What is the difference between `AddSingleton`, `AddScoped`, and `AddTransient`? For a `SensorSimulator` that runs continuously, which lifetime is correct and why?
-2. If `ExecuteAsync` throws an unhandled exception, does the host crash? How do you control this behavior?
-3. What is the difference between `IHostedService` and `BackgroundService`? When would you implement `IHostedService` directly instead of inheriting from `BackgroundService`?
-4. What is `CancellationToken stoppingToken` in `ExecuteAsync`? Who cancels it and when?
-5. The Options pattern has three interfaces: `IOptions<T>`, `IOptionsSnapshot<T>`, `IOptionsMonitor<T>`. What is the difference? Which one would you use for a setting that can change at runtime without restarting the service?
-6. In Clean Architecture, why can't the `Domain` project reference the `Infrastructure` project? What problem does this solve in practice?
-7. If you need to run two independent background tasks in the same Worker Service (e.g., one that reads sensors and one that checks health), what are your options?
+1. *(Purpose)* In Clean Architecture, `Domain` cannot reference `Infrastructure`. In plain terms, why does that rule exist — what real problem does it prevent as the codebase grows?
+2. *(Purpose)* A Worker Service is different from a plain console app. What does the host give you that you'd otherwise have to build yourself?
+3. *(Code)* If `ExecuteAsync` throws an unhandled exception, does the host crash? How do you control that behavior, and why does the default matter for an unattended edge server?
 
 ---
 
@@ -246,13 +237,9 @@ Both stages are separate `BackgroundService` implementations registered in DI. T
 
 ### Check — Phase 3
 
-1. What is the difference between a `BoundedChannel` and an `UnboundedChannel`? What is the risk of using an unbounded channel in a production system with a fast producer?
-2. Explain backpressure in plain English. Why does it matter at 4–8 Hz with engineering calculations that take variable time?
-3. What happens to the consuming worker if `channel.Writer.Complete()` is called while it is blocked on `ReadAsync`?
-4. If your processing stage takes 300 ms per reading but readings arrive every 250 ms, what happens over time? How does a bounded channel with `DropOldest` change the behavior?
-5. Why would you run each pipeline stage as a separate `BackgroundService` instead of one big service that does everything sequentially in a single loop?
-6. How would you add a third stage to the pipeline (e.g., a persistence stage that writes to MongoDB) without modifying either Stage 1 or Stage 2?
-7. What is `ConfigureAwait(false)` and why should library-level pipeline code use it?
+1. *(Purpose)* The channel sits between the ingestion worker and the processing worker. Why not just call the processing logic directly from the ingestion loop — what does the channel buy you?
+2. *(Purpose)* The channel is bounded with a capacity of 100 and `DropOldest` overflow policy. Explain in plain English what happens when the processing stage falls behind — and why `DropOldest` is a reasonable choice for live sensor data specifically.
+3. *(Code)* Each pipeline stage is a separate `BackgroundService`. What breaks if you put both stages in the same service inside a single sequential loop?
 
 ---
 
@@ -303,13 +290,9 @@ Stage 2 now knows nothing about console, alarms, MongoDB, or SignalR. It only kn
 
 ### Check — Phase 4
 
-1. What is the difference between `IRequest` and `INotification` in MediatR? Give an example of when you would use each in WellEdge.
-2. If two handlers are registered for the same `INotification`, in what order do they run by default? Is this guaranteed?
-3. Why is it wrong to use `INotification` for the hot data path (the 4 Hz reading loop) in a production system?
-4. What is a `IPipelineBehavior`? Describe a real use case where you would add one.
-5. MediatR uses `IServiceProvider` to resolve handlers at runtime. What does this mean for the handler lifetime? If a handler needs a scoped service (like a database context), how do you handle that in a singleton pipeline?
-6. What is the difference between `Publish` (sequential) and a parallel publish strategy? When would parallel handlers be dangerous in a deterministic real-time system?
-7. A teammate says "just use MediatR everywhere, it decouples everything." What are the real costs of this approach?
+1. *(Purpose)* Before MediatR, Stage 2 called specific services directly (console, alarms, etc.). What's the concrete problem with that as the number of consumers grows?
+2. *(Purpose)* MediatR is not used on the 4 Hz hot data path — Channels handle that. Why? What would go wrong if MediatR handled every reading instead?
+3. *(Code)* `IRequest` and `INotification` are two different MediatR contracts. For a processed sensor reading that needs to trigger logging, alarms, and persistence simultaneously — which one is correct and why?
 
 ---
 
@@ -360,13 +343,9 @@ Test with the SignalR client in a browser console or a simple HTML file — conf
 
 ### Check — Phase 5
 
-1. Why can't you inject `WellHub` directly into your MediatR handler to send messages? Why must you use `IHubContext<T>` instead?
-2. What is the difference between `Clients.All`, `Clients.Group("groupName")`, and `Clients.Caller`?
-3. When a client disconnects and reconnects, does it automatically rejoin groups it was in? What does this mean for your application design?
-4. What is a typed hub? What problem does it solve compared to using string-based method names?
-5. Your hub is at `/hubs/well`. A client connects and immediately starts receiving data. If the client's network drops for 10 seconds and reconnects, what does it see? What data was missed? How would you handle this?
-6. SignalR supports three transports: WebSockets, SSE, Long Polling. Which one is used by default? Why would you want to force WebSockets-only in a LAN-only wellsite environment?
-7. What happens to hub connections when the server restarts? What is the client's responsibility?
+1. *(Purpose)* SignalR is used to push data from server to browser. Why not just have the Angular app poll an HTTP endpoint every 250ms instead — what does SignalR actually solve?
+2. *(Purpose)* The Angular client disconnects for 10 seconds and reconnects. What data did it miss, and whose responsibility is it to handle that gap — the server or the client?
+3. *(Code)* You can't inject `WellHub` directly into your MediatR handler. You must use `IHubContext<T>`. Why — what is the difference between the two?
 
 ---
 
@@ -413,13 +392,9 @@ Add persistence to the pipeline:
 
 ### Check — Phase 6
 
-1. Why should `MongoClient` be registered as a singleton? What happens if you register it as transient?
-2. What is a MongoDB time-series collection? What optimization does it provide over a regular collection for sensor data?
-3. The `PersistenceHandler` buffers 20 readings before flushing. If the service shuts down with 15 readings in the buffer, they are lost. How would you handle this without adding complex persistence middleware?
-4. MongoDB stores `DateTime` without timezone info internally. If your simulator runs in Mexico City (UTC-6) and the data is read in India (UTC+5:30), what could go wrong if you store local time instead of UTC?
-5. Why does the `Domain` project define `IReadingRepository` as an interface, and why does only `Infrastructure` implement it? What would break if `Application` referenced `MongoDB.Driver` directly?
-6. What is the difference between `Find` with a filter and an aggregation pipeline for querying time-series data? When would you use each?
-7. A new team member asks: "Can't we just use Entity Framework Core instead of the MongoDB driver?" What is your answer?
+1. *(Purpose)* At 4 Hz you produce 14,400 readings per hour. The persistence handler batches 20 before flushing. Why batch at all — what's the cost of inserting one document per reading?
+2. *(Purpose)* All timestamps are stored in UTC. The simulator runs in Mexico City (UTC-6), the data is read by an engineer in India (UTC+5:30). What breaks if you store local time instead?
+3. *(Code)* `IReadingRepository` is defined in `Domain` but implemented in `Infrastructure`. Why does the interface live in `Domain` and not in `Infrastructure` alongside the implementation?
 
 ---
 
@@ -500,13 +475,9 @@ Create a minimal Angular app `welldash` that connects to the SignalR hub:
 
 ### Check — Phase 7
 
-1. What is the difference between MQTT QoS 0, 1, and 2? Why is QoS 0 usually the right choice for high-frequency sensor data at the wellsite?
-2. If the MQTT broker goes offline for 30 seconds and comes back, what happens to the readings published during that window (QoS 0)? Is that acceptable for this use case?
-3. What is the difference between `signal()` and `computed()`? Can a `computed()` signal be set directly?
-4. Why use `toSignal()` instead of subscribing to the Observable in `ngOnInit`? What problem does it solve?
-5. You have a SignalR `Observable<ProcessedReading>` emitting 4 times per second. If the template re-renders on every emission, is this a problem in Angular with Signals? Why or why not compared to using `ngOnChanges`?
-6. A teammate says "just use RxJS for everything, Signals are new and risky." When would that be the wrong choice? Give a concrete example from the WellEdge dashboard.
-7. The Angular `effect()` in your dashboard logs every reading. In what zone does this run? What are the rules about what you can and cannot do inside `effect()`?
+1. *(Purpose)* MQTT replaces the fake simulator as the data source, but the rest of the pipeline (Channels → MediatR → SignalR → MongoDB) is untouched. What does that tell you about how the earlier phases were structured — and why does it matter?
+2. *(Purpose)* The dashboard uses `toSignal()` to bridge the SignalR Observable into Angular Signals. Why not just subscribe to the Observable directly in `ngOnInit` and update a component property manually?
+3. *(Code)* MQTT has three QoS levels: 0, 1, and 2. For 4 Hz sensor data at a wellsite, QoS 0 is the right choice. Why — and what are you explicitly accepting as a trade-off?
 
 ---
 
@@ -552,13 +523,9 @@ Create a minimal Angular app `welldash` that connects to the SignalR hub:
 
 ### Check — Phase 8
 
-1. What is structured logging? Why is `Log.Information("Pressure {Psi}", value)` better than `Log.Information($"Pressure {value}")` in a production system?
-2. When the Windows Service stop signal is received, what is the sequence of events in your Worker Service? What is the default shutdown timeout and how do you change it?
-3. The channel has 15 buffered readings when shutdown begins. Your drain loop has a 3-second timeout. What happens if draining takes longer than 3 seconds? Who enforces the timeout?
-4. What is the difference between `Healthy`, `Degraded`, and `Unhealthy` in .NET health checks? Give a concrete example of each from WellEdge.
-5. Your `ChannelHealthCheck` reports `Degraded` when the channel is 80% full. What does this tell an operator? What action should they take?
-6. In the Angular client, you implement exponential backoff for SignalR reconnection. If the edge server restarts and the client reconnects after 8 seconds, what state is the client missing? How do you handle the gap?
-7. A wellsite engineer reports that the service "just stopped" overnight with no log messages after 02:00. What are the first three things you check, and what logs would you look for?
+1. *(Purpose)* A wellsite engineer reports the service "just stopped" overnight with no log messages after 02:00. Walk through what you'd check first and why structured logs make that investigation faster than plain string logs.
+2. *(Purpose)* The service has a 3-second graceful shutdown window to drain buffered readings. What happens to the 15 readings in the buffer if shutdown takes longer — and why is a hard timeout the right design for an edge server running unattended?
+3. *(Code)* The `ChannelHealthCheck` reports `Degraded` when the channel is 80% full. What does that actually tell an operator, and what's the difference between `Degraded` and `Unhealthy` in this context?
 
 ---
 
