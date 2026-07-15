@@ -68,7 +68,7 @@ Update this as phases are completed.
 
 | Phase | Topic | Status |
 |-------|-------|--------|
-| 1 | C# Foundations | Not started |
+| 1 | C# Foundations | Complete |
 | 2 | Worker Services + Clean Architecture | Not started |
 | 3 | System.Threading.Channels | Not started |
 | 4 | MediatR + Event-Driven | Not started |
