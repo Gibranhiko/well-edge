@@ -1,3 +1,7 @@
 <Solution>
+  <Project Path="WellEdge.Application/WellEdge.Application.csproj" />
+  <Project Path="WellEdge.Domain/WellEdge.Domain.csproj" />
+  <Project Path="WellEdge.Infrastructure/WellEdge.Infrastructure.csproj" />
   <Project Path="WellEdge.Simulator/WellEdge.Simulator.csproj" />
+  <Project Path="WellEdge.Worker/WellEdge.Worker.csproj" />
 </Solution>
